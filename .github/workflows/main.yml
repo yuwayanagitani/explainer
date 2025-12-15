@@ -6,6 +6,9 @@ on:
     tags: ["v*"]
   pull_request:
 
+permissions:
+  contents: write
+
 jobs:
   call-shared:
     uses: yuwayanagitani/anki-addon-workflows/.github/workflows/anki-addon.yml@v1
