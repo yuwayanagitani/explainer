@@ -66,7 +66,6 @@ def _build_prompts(question: str, answer: str, cfg: AddonConfig) -> tuple[str, s
             + "\n".join(lines)
             + "\nRAW HTML形式のみを返してください。\n"
             + "\nMarkdown記法やコードブロック（``` や ```html）は使わないでください。\n"
-            + "\n出力は < で始まり > で終わるようにしてください。\n"
         )
     else:
         # English
