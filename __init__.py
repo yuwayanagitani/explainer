@@ -64,7 +64,7 @@ def _build_prompts(question: str, answer: str, cfg: AddonConfig) -> tuple[str, s
             f"【模範解答】\n{answer}\n\n"
             "出力条件:\n"
             + "\n".join(lines)
-            + "\nRAW HTML形式（h3, p, ul, li, table, b, i, u etc...）のみを返してください。\n"
+            + "\nRAW HTML形式（header, p, ul, li, table, b, i, u etc...）のみを返してください。\n"
             + "\nMarkdown記法やコードブロック（``` や ```html）は使わないでください。\n"
         )
     else:
@@ -86,7 +86,7 @@ def _build_prompts(question: str, answer: str, cfg: AddonConfig) -> tuple[str, s
             f"Question:\n{question}\n\n"
             f"Answer:\n{answer}\n\n"
             + "\n".join(lines)
-            + "\nReturn HTML ONLY.(h3, p, ul, li, table, b, i, u etc...)\n"
+            + "\nReturn HTML ONLY.(header, p, ul, li, table, b, i, u etc...)\n"
             + "\nDo NOT wrap the output in markdown or code blocks.\n"
             + "\nDo NOT include ``` or ```html.\n"
         )
