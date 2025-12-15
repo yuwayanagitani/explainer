@@ -1,6 +1,6 @@
 {
   "name": "anki-ai-explainer",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "AI Card Explainer is an Anki add-on that automatically generates concise, high-quality explanations for flashcards using large language models (OpenAI or Google Gemini). It is designed especially for medical, nursing, and life-science students who want clean, exam-oriented explanations without unnecessary verbosity.",
   "auther": "Yuwa Yanagitani",
   "homepage": "https://github.com/yuwayanagitani/anki-ai-explainer",
@@ -18,3 +18,4 @@
   ],
   "notes": ""
 }
+
