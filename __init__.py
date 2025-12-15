@@ -1,5 +1,6 @@
 from __future__ import annotations
 import os
+import re
 import traceback
 from typing import Optional, Dict, Any
 
@@ -50,11 +51,11 @@ def _build_prompts(question: str, answer: str, cfg: AddonConfig) -> tuple[str, s
         )
 
         lines = []
-        lines.append("1. 最初に1文で『定義または全体像』を簡潔にまとめる。")
+        lines.append("1. 最初に『定義または全体像』を簡潔にまとめる。")
         if style in ("definition_and_mechanism", "full"):
-            lines.append("2. 続けて、機序・病態生理・原因となるメカニズムを2〜3行で説明する。")
+            lines.append("2. 続けて、機序・病態生理・原因となるメカニズムを説明する。")
         if style == "full":
-            lines.append("3. 臨床的ポイントを1〜2行で触れる。")
+            lines.append("3. 臨床的ポイントに触れる。")
         lines.append(f"文字数の目安: 約 {target_len} 文字。")
 
         user_prompt = (
@@ -63,7 +64,9 @@ def _build_prompts(question: str, answer: str, cfg: AddonConfig) -> tuple[str, s
             f"【模範解答】\n{answer}\n\n"
             "出力条件:\n"
             + "\n".join(lines)
-            + "\nHTML形式（<p>...</p>, <ul><li>...</li></ul>）で返してください。\n"
+            + "\nRAW HTML形式のみを返してください。\n"
+            + "\nMarkdown記法やコードブロック（``` や ```html）は使わないでください。\n"
+            + "\n出力は < で始まり > で終わるようにしてください。\n"
         )
     else:
         # English
@@ -72,11 +75,11 @@ def _build_prompts(question: str, answer: str, cfg: AddonConfig) -> tuple[str, s
         )
 
         lines = []
-        lines.append("1. One line definition or overview.")
+        lines.append("1. Summarize definition or overview.")
         if style in ("definition_and_mechanism", "full"):
-            lines.append("2. Mechanism/pathophysiology in 2–3 lines.")
+            lines.append("2. Describe mechanism/pathophysiology.")
         if style == "full":
-            lines.append("3. Optional clinical notes (1–2 lines).")
+            lines.append("3. Optional clinical notes.")
         lines.append(f"Target length: ~{target_len} characters.")
 
         user_prompt = (
@@ -84,7 +87,9 @@ def _build_prompts(question: str, answer: str, cfg: AddonConfig) -> tuple[str, s
             f"Question:\n{question}\n\n"
             f"Answer:\n{answer}\n\n"
             + "\n".join(lines)
-            + "\nReturn HTML only.\n"
+            + "\nReturn HTML ONLY.\n"
+            + "\nDo NOT wrap the output in markdown or code blocks.\n"
+            + "\nDo NOT include ``` or ```html.\n"
         )
 
     return system_prompt, user_prompt
@@ -167,6 +172,31 @@ def _prepare_note_job_from_note(note, cfg: AddonConfig) -> tuple[Optional[dict],
         "sep": sep,
     }, None
 
+_RE_FENCE = re.compile(
+    r"^\s*```(?:html|HTML|htm|xml)?\s*\n(?P<body>.*?)(?:\n```)\s*$",
+    re.DOTALL,
+)
+
+def _strip_markdown_fences(s: str) -> str:
+    if not s:
+        return ""
+    t = s.strip()
+
+    # 典型: ```html ... ```
+    m = _RE_FENCE.match(t)
+    if m:
+        return (m.group("body") or "").strip()
+
+    # まれ: ``` だけ付く / 末尾だけ ``` などの雑なケース
+    # 先頭の ```xxx 行を1行だけ落とす
+    if t.startswith("```"):
+        t = re.sub(r"^\s*```[^\n]*\n", "", t, count=1)
+    # 末尾の ``` を落とす
+    t = re.sub(r"\n```(?:\s*)$", "", t)
+
+    return t.strip()
+
+
 
 def _generate_html(question: str, answer: str, cfg: AddonConfig) -> tuple[Optional[str], Optional[str]]:
     system_prompt, user_prompt = _build_prompts(question, answer, cfg)
@@ -177,12 +207,26 @@ def _generate_html(question: str, answer: str, cfg: AddonConfig) -> tuple[Option
     else:
         api_key = cfg_get(cfg, "01_gemini_api_key") or os.getenv("GEMINI_API_KEY")
         model = cfg_get(cfg, "01_gemini_model", "gemini-2.5-flash-lite")
+
     if not api_key:
         return None, "API key not set."
+
     try:
         if provider == "openai":
-            return _call_openai(api_key, model, system_prompt, user_prompt), None
-        return _call_gemini(api_key, model, system_prompt, user_prompt), None
+            raw = _call_openai(api_key, model, system_prompt, user_prompt)
+        else:
+            raw = _call_gemini(api_key, model, system_prompt, user_prompt)
+
+        html_out = _strip_markdown_fences(raw)
+
+        # 任意：最低限の安全チェック（事故防止）
+        if html_out and not html_out.lstrip().startswith("<"):
+            # ここは好み。エラーにするなら return None, ...
+            # とりあえずそのまま通すならコメントアウトでOK
+            pass
+
+        return html_out, None
+
     except Exception as e:
         traceback.print_exc()
         return None, f"API error: {e}"
