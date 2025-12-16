@@ -10,6 +10,7 @@
   "02_explanation_field": "Explanation",
 
   "03_language": "en",
+  "03_audience": "medical",
   "03_explanation_style": "definition_and_mechanism",
   "03_target_length_chars": 260,
 
