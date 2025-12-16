@@ -32,64 +32,68 @@ def cfg_get(cfg: dict, key: str, default=None):
 # ==============================
 
 def _build_prompts(question: str, answer: str, cfg: AddonConfig) -> tuple[str, str]:
-    language = cfg_get(cfg, "03_language", "ja")
+    audience = cfg_get(cfg, "03_audience", "medical")  # "medical" or "general"
+    language = cfg_get(cfg, "03_language", "ja")       # "ja", "en", ...
+
+    LANG_MAP = {
+        "ja": "Japanese",
+        "en": "English",
+        "de": "German",
+        "fr": "French",
+        "es": "Spanish",
+        "zh": "Chinese",
+        "ko": "Korean",
+        "it": "Italian",
+        "pt": "Portuguese",
+        "ru": "Russian",
+        "ar": "Arabic",
+    }
+    lang_label = LANG_MAP.get(str(language).lower(), "English")
+
     style = cfg_get(cfg, "03_explanation_style", "definition_and_mechanism")
     target_len = int(cfg_get(cfg, "03_target_length_chars", 260))
+    target_len = max(80, min(800, target_len))
 
-    if target_len < 80:
-        target_len = 80
-    if target_len > 800:
-        target_len = 800
-
-    # Japanese explanations (your original default)
-    if language == "ja":
+    # ---- system prompt: audience switch (English only; output language is controlled in user prompt) ----
+    if str(audience).lower() == "general":
         system_prompt = (
-            "あなたは医学・看護・生物系の学生をサポートする熟練チューターです。"
-            "与えられた『質問』と『模範解答』から、その内容の簡潔な解説を日本語で作成します。"
-            "設定で指定されたスタイル（定義のみ／定義＋機序／厚めの解説）と長さの目安に従ってください。"
-            "専門用語は必要に応じて用いますが、冗長な前置きや雑談は一切含めません。"
-        )
-
-        lines = []
-        lines.append("1. 最初に『定義または全体像』を簡潔にまとめる。")
-        if style in ("definition_and_mechanism", "full"):
-            lines.append("2. 続けて、機序・病態生理・原因となるメカニズムを説明する。")
-        if style == "full":
-            lines.append("3. 臨床的ポイントに触れる。")
-        lines.append(f"文字数の目安: 約 {target_len} 文字。")
-
-        user_prompt = (
-            "次のAnkiカードの内容について、簡潔な解説を書いてください。\n\n"
-            f"【質問】\n{question}\n\n"
-            f"【模範解答】\n{answer}\n\n"
-            "出力条件:\n"
-            + "\n".join(lines)
-            + "\nRAW HTML形式（header, p, ul, li, table, b, i, u etc...）のみを返してください。\n"
-            + "\nMarkdown記法やコードブロック（``` や ```html）は使わないでください。\n"
+            "You are a skilled explainer for the general public. "
+            "Make explanations accurate, easy to understand, and calm. "
+            "Avoid jargon; if a technical term is necessary, explain it briefly in parentheses. "
+            "Do not provide personal medical advice or a diagnosis."
         )
     else:
-        # English
         system_prompt = (
-            "You are an expert medical tutor. Write a concise explanation in the requested style."
+            "You are an expert medical tutor. "
+            "Write a concise explanation suitable for medical/health-science students."
         )
 
-        lines = []
-        lines.append("1. Summarize definition or overview.")
-        if style in ("definition_and_mechanism", "full"):
-            lines.append("2. Describe mechanism/pathophysiology.")
-        if style == "full":
-            lines.append("3. Optional clinical notes.")
-        lines.append(f"Target length: ~{target_len} characters.")
+    # ---- style instructions (kept in English for stability) ----
+    lines: list[str] = []
+    lines.append("1. Summarize the definition or overall idea first.")
+    if style in ("definition_and_mechanism", "full"):
+        if str(audience).lower() == "general":
+            lines.append("2. Explain the 'why/how' in 1–2 simple sentences (intuitive, non-technical).")
+        else:
+            lines.append("2. Describe the mechanism/pathophysiology succinctly.")
+    if style == "full":
+        if str(audience).lower() == "general":
+            lines.append("3. Add practical context (e.g., common examples, what it means) without advising actions.")
+        else:
+            lines.append("3. Add brief clinical notes (high-yield points).")
+    lines.append(f"Target length: ~{target_len} characters.")
 
-        user_prompt = (
-            "Please write a concise explanation for this Anki card.\n\n"
-            f"Question:\n{question}\n\n"
-            f"Answer:\n{answer}\n\n"
-            + "\n".join(lines)
-            + "\nReturn HTML ONLY.(header, p, ul, li, table, b, i, u etc...)\n"
-            + "\nDo NOT wrap the output in markdown or code blocks.\n"
-            + "\nDo NOT include ``` or ```html.\n"
-        )
+    # ---- user prompt: language + output constraints ----
+    user_prompt = (
+        "Please write a concise explanation for this Anki card.\n\n"
+        f"Question:\n{question}\n\n"
+        f"Answer:\n{answer}\n\n"
+        + "\n".join(lines)
+        + f"\n\nThe output language MUST be {lang_label}.\n"
+        + "Return HTML ONLY (use tags like header, p, ul, li, table, b, i, u, etc.).\n"
+        + "Do NOT wrap the output in markdown or code blocks.\n"
+        + "Do NOT include ``` or ```html.\n"
+    )
 
     return system_prompt, user_prompt
 
