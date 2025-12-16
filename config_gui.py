@@ -22,7 +22,8 @@ DEFAULT_CONFIG: AddonConfig = {
     "02_explanation_field": "Explanation",
 
     "03_language": "en",
-    "03_audience": "medical",
+    "03_domain": "general",  
+    "03_audience": "general",
     "03_explanation_style": "definition_and_mechanism",
     "03_target_length_chars": 260,
 
@@ -134,10 +135,10 @@ class ExplainerConfigDialog(QDialog):
         self.tabs.addTab(tab_out, "Output")
         form_o = QFormLayout(tab_out)
 
-        self.audience = QComboBox()
-        self.audience.addItem("Medical / Academic", "medical")
-        self.audience.addItem("General / Lay audience", "general")
-        form_o.addRow("Audience", self.audience)
+        self.domain = QComboBox()
+        self.domain.addItem("Medical (medicine / biology / nursing)", "medical")
+        self.domain.addItem("General (non-medical topics)", "general")
+        form_o.addRow("Mode", self.domain)
 
         self.language = QComboBox()
 
@@ -231,7 +232,10 @@ class ExplainerConfigDialog(QDialog):
         self.e_field.setText(str(cfg.get("02_explanation_field", "Explanation")) or "Explanation")
 
         # Output
-        self._set_combo_by_data(self.audience, cfg.get("03_audience", "medical"))
+        # new key preferred; fallback to legacy key
+        dom = cfg.get("03_domain", None) or cfg.get("03_audience", "general")
+        self._set_combo_by_data(self.domain, dom)
+
         self._set_combo_by_data(self.language, cfg.get("03_language", "ja"))
         self._set_combo_by_data(self.style, cfg.get("03_explanation_style", "definition_and_mechanism"))
         self.target_len.setValue(int(cfg.get("03_target_length_chars", 260) or 260))
@@ -263,7 +267,9 @@ class ExplainerConfigDialog(QDialog):
         cfg["02_explanation_field"] = self.e_field.text().strip() or "Explanation"
 
         cfg["03_language"] = self.language.currentData()
-        cfg["03_audience"] = self.audience.currentData()
+        cfg["03_domain"] = self.domain.currentData()
+        # legacy sync (safe if user downgrades to an older add-on build)
+        cfg["03_audience"] = cfg["03_domain"]
         cfg["03_explanation_style"] = self.style.currentData()
         cfg["03_target_length_chars"] = int(self.target_len.value())
 

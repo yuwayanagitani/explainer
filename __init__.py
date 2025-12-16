@@ -32,9 +32,18 @@ def cfg_get(cfg: dict, key: str, default=None):
 # ==============================
 
 def _build_prompts(question: str, answer: str, cfg: AddonConfig) -> tuple[str, str]:
-    audience = cfg_get(cfg, "03_audience", "medical")  # "medical" or "general"
-    language = cfg_get(cfg, "03_language", "ja")       # "ja", "en", ...
+    # --- Domain (new) with backward compat ---
+    # new key: 03_domain = "medical" | "general"
+    # old key: 03_audience (legacy) - used only if 03_domain is missing
+    domain = cfg_get(cfg, "03_domain", None)
+    if not domain:
+        domain = cfg_get(cfg, "03_audience", "general")
+    domain = str(domain).lower().strip()
+    if domain not in ("medical", "general"):
+        domain = "medical"
 
+    # --- Language ---
+    language = str(cfg_get(cfg, "03_language", "ja") or "ja").lower().strip()
     LANG_MAP = {
         "ja": "Japanese",
         "en": "English",
@@ -48,44 +57,48 @@ def _build_prompts(question: str, answer: str, cfg: AddonConfig) -> tuple[str, s
         "ru": "Russian",
         "ar": "Arabic",
     }
-    lang_label = LANG_MAP.get(str(language).lower(), "English")
+    lang_label = LANG_MAP.get(language, "English")
 
+    # --- Style / Length ---
     style = cfg_get(cfg, "03_explanation_style", "definition_and_mechanism")
     target_len = int(cfg_get(cfg, "03_target_length_chars", 260))
     target_len = max(80, min(800, target_len))
 
-    # ---- system prompt: audience switch (English only; output language is controlled in user prompt) ----
-    if str(audience).lower() == "general":
+    # --- System prompt: domain switch (English only; output language is controlled below) ---
+    if domain == "medical":
         system_prompt = (
-            "You are a skilled explainer for the general public. "
-            "Make explanations accurate, easy to understand, and calm. "
-            "Avoid jargon; if a technical term is necessary, explain it briefly in parentheses. "
-            "Do not provide personal medical advice or a diagnosis."
+            "You are an expert medical tutor. "
+            "Write an explanation suitable for medical/health-science students. "
+            "Be accurate. Avoid unnecessary chatter."
         )
     else:
         system_prompt = (
-            "You are an expert medical tutor. "
-            "Write a explanation suitable for medical/health-science students."
+            "You are an expert tutor across many subjects. "
+            "Write an explanation suitable for learners. "
+            "Be accurate, clear, and avoid unnecessary digressions."
         )
 
-    # ---- style instructions (kept in English for stability) ----
+    # --- Style instructions ---
     lines: list[str] = []
     lines.append("1. Summarize the definition or overall idea first.")
+
     if style in ("definition_and_mechanism", "full"):
-        if str(audience).lower() == "general":
-            lines.append("2. Explain the 'why/how' in some simple sentences (intuitive, non-technical).")
-        else:
+        if domain == "medical":
             lines.append("2. Describe the mechanism/pathophysiology.")
-    if style == "full":
-        if str(audience).lower() == "general":
-            lines.append("3. Add practical context (e.g., common examples, what it means) without advising actions.")
         else:
+            lines.append("2. Explain the reasoning, cause-effect, or the key concept.")
+
+    if style == "full":
+        if domain == "medical":
             lines.append("3. Add brief clinical notes (high-yield points).")
+        else:
+            lines.append("3. Add helpful context (examples, common pitfalls, or why it matters).")
+
     lines.append(f"Target length: ~{target_len} characters.")
 
-    # ---- user prompt: language + output constraints ----
+    # --- User prompt: language + strict output constraints ---
     user_prompt = (
-        "Please write an explanation for this Anki card.\n\n"
+        "Please write a concise explanation for this Anki card.\n\n"
         f"Question:\n{question}\n\n"
         f"Answer:\n{answer}\n\n"
         + "\n".join(lines)
