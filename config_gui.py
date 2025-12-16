@@ -22,6 +22,7 @@ DEFAULT_CONFIG: AddonConfig = {
     "02_explanation_field": "Explanation",
 
     "03_language": "en",
+    "03_audience": "medical",
     "03_explanation_style": "definition_and_mechanism",
     "03_target_length_chars": 260,
 
@@ -139,8 +140,24 @@ class ExplainerConfigDialog(QDialog):
         form_o.addRow("Audience", self.audience)
 
         self.language = QComboBox()
+
+        # Common
         self.language.addItem("Japanese (ja)", "ja")
         self.language.addItem("English (en)", "en")
+
+        # Europe
+        self.language.addItem("German (de)", "de")
+        self.language.addItem("French (fr)", "fr")
+        self.language.addItem("Spanish (es)", "es")
+        self.language.addItem("Italian (it)", "it")
+        self.language.addItem("Portuguese (pt)", "pt")
+        self.language.addItem("Russian (ru)", "ru")
+
+        # Asia / Others
+        self.language.addItem("Chinese (zh)", "zh")
+        self.language.addItem("Korean (ko)", "ko")
+        self.language.addItem("Arabic (ar)", "ar")
+
         form_o.addRow("Language", self.language)
 
         self.style = QComboBox()

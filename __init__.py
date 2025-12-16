@@ -65,7 +65,7 @@ def _build_prompts(question: str, answer: str, cfg: AddonConfig) -> tuple[str, s
     else:
         system_prompt = (
             "You are an expert medical tutor. "
-            "Write a concise explanation suitable for medical/health-science students."
+            "Write a explanation suitable for medical/health-science students."
         )
 
     # ---- style instructions (kept in English for stability) ----
@@ -73,9 +73,9 @@ def _build_prompts(question: str, answer: str, cfg: AddonConfig) -> tuple[str, s
     lines.append("1. Summarize the definition or overall idea first.")
     if style in ("definition_and_mechanism", "full"):
         if str(audience).lower() == "general":
-            lines.append("2. Explain the 'why/how' in 1–2 simple sentences (intuitive, non-technical).")
+            lines.append("2. Explain the 'why/how' in some simple sentences (intuitive, non-technical).")
         else:
-            lines.append("2. Describe the mechanism/pathophysiology succinctly.")
+            lines.append("2. Describe the mechanism/pathophysiology.")
     if style == "full":
         if str(audience).lower() == "general":
             lines.append("3. Add practical context (e.g., common examples, what it means) without advising actions.")
@@ -85,7 +85,7 @@ def _build_prompts(question: str, answer: str, cfg: AddonConfig) -> tuple[str, s
 
     # ---- user prompt: language + output constraints ----
     user_prompt = (
-        "Please write a concise explanation for this Anki card.\n\n"
+        "Please write an explanation for this Anki card.\n\n"
         f"Question:\n{question}\n\n"
         f"Answer:\n{answer}\n\n"
         + "\n".join(lines)
