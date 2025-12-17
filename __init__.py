@@ -98,7 +98,7 @@ def _build_prompts(question: str, answer: str, cfg: AddonConfig) -> tuple[str, s
 
     # --- User prompt: language + strict output constraints ---
     user_prompt = (
-        "Please write a concise explanation for this Anki card.\n\n"
+        "Please write a detailed explanation for this Anki card.\n\n"
         f"Question:\n{question}\n\n"
         f"Answer:\n{answer}\n\n"
         + "\n".join(lines)
