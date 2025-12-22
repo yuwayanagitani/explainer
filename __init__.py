@@ -106,6 +106,7 @@ def _build_prompts(question: str, answer: str, cfg: AddonConfig) -> tuple[str, s
         + "Return HTML ONLY (use tags like header, p, ul, li, table, b, i, u, etc.).\n"
         + "Do NOT wrap the output in markdown or code blocks.\n"
         + "Do NOT include ``` or ```html.\n"
+        + f"Keep the output around {target_len} characters.\n"
     )
 
     return system_prompt, user_prompt
