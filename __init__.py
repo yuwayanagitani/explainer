@@ -1,6 +1,7 @@
 from __future__ import annotations
 import os
 import re
+from html import escape
 import traceback
 from typing import Optional, Dict, Any
 
@@ -97,17 +98,36 @@ def _build_prompts(question: str, answer: str, cfg: AddonConfig) -> tuple[str, s
     lines.append(f"Target length: ~{target_len} characters.")
 
     # --- User prompt: language + strict output constraints ---
-    user_prompt = (
-        "Please write an explanation for this Anki card.\n\n"
-        f"Question:\n{question}\n\n"
-        f"Answer:\n{answer}\n\n"
-        + "\n".join(lines)
-        + f"\n\nThe output language MUST be {lang_label}.\n"
-        + "Return HTML ONLY (use tags like header, p, ul, li, table, b, i, u, etc.).\n"
-        + "Do NOT wrap the output in markdown or code blocks.\n"
-        + "Do NOT include ``` or ```html.\n"
-        + f"Keep the output around {target_len} characters.\n"
-    )
+
+    q = (question or "").strip()
+    a = (answer or "").strip()
+
+    parts: list[str] = []
+    parts.append("Please write an explanation for this Anki card.")
+    parts.append("")
+
+    if q and a:
+        parts.append(f"Question:\n{q}\n")
+        parts.append(f"Answer:\n{a}\n")
+    elif q:
+        parts.append("Only the question is available (the answer field is empty or missing).")
+        parts.append(f"Question:\n{q}\n")
+        parts.append("Explain the concept being asked, and what kind of answer would be expected.")
+        parts.append("")
+    elif a:
+        parts.append("Only the answer is available (the question field is empty or missing).")
+        parts.append(f"Answer:\n{a}\n")
+        parts.append("Explain what this answer means, and typical contexts where it appears.")
+        parts.append("")
+
+    parts.append("\n".join(lines))
+    parts.append(f"\nThe output language MUST be {lang_label}.")
+    parts.append("Return HTML ONLY (use tags like header, p, ul, li, table, b, i, u, etc.).")
+    parts.append("Do NOT wrap the output in markdown or code blocks.")
+    parts.append("Do NOT include ``` or ```html.")
+    parts.append(f"Keep the output around {target_len} characters.")
+
+    user_prompt = "\n".join(parts) + "\n"
 
     return system_prompt, user_prompt
 
@@ -165,13 +185,23 @@ def _prepare_note_job_from_note(note, cfg: AddonConfig) -> tuple[Optional[dict],
     q_field = cfg_get(cfg, "02_question_field", "Front")
     a_field = cfg_get(cfg, "02_answer_field", "Back")
     e_field = cfg_get(cfg, "02_explanation_field", "Explanation")
+
+    # フィールドが存在しない場合も即スキップにせず、存在する方だけ使う
+    question = ""
+    answer = ""
     try:
         question = (note[q_field] or "").strip()
+    except KeyError:
+        question = ""
+    try:
         answer = (note[a_field] or "").strip()
     except KeyError:
-        return None, "Specified fields do not exist."
-    if not question or not answer:
-        return None, "Question or answer is empty."
+        answer = ""
+
+    # 両方空なら無理
+    if (not question) and (not answer):
+        return None, "Question and answer are both empty (or missing)."
+
     try:
         existing_raw = note[e_field] or ""
     except KeyError:
