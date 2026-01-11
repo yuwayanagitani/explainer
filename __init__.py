@@ -122,7 +122,7 @@ def _build_prompts(question: str, answer: str, cfg: AddonConfig) -> tuple[str, s
 
     parts.append("\n".join(lines))
     parts.append(f"\nThe output language MUST be {lang_label}.")
-    parts.append("Return HTML ONLY (use tags like header, p, ul, li, table, b, i, u, etc.).")
+    parts.append("Return HTML ONLY .")
     parts.append("Do NOT wrap the output in markdown or code blocks.")
     parts.append("Do NOT include ``` or ```html.")
     parts.append(f"Keep the output around {target_len} characters.")
